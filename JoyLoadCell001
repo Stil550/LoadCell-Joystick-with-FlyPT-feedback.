@@ -1,0 +1,135 @@
+#include <Joystick.h>
+#include <GyverHX711.h>
+
+Joystick_ Joystick;
+
+uint8_t dataPinX = A2;
+uint8_t clockPinX = A3;
+uint8_t dataPinY = A0;
+uint8_t clockPinY = A1;
+
+float JoystickX;
+float JoystickY;
+float JoyRawX;
+float JoyRawY;
+float joyCalibX;
+float joyCalibY;
+float joyMinX;
+float joyMaxX;
+float joyMinY;
+float joyMaxY;
+float joyMidX;
+float joyMidY;
+
+float flightSpeed=0;
+float joyMapXmin;
+float joyMapXmax;
+float joyMapYmin;
+float joyMapYmax;
+int resetPin = 7;
+
+float joyMapX;
+float joyMapY;
+
+
+
+GyverHX711 scaleX(dataPinX,clockPinX, HX_GAIN64_A);
+GyverHX711 scaleY(dataPinY,clockPinY, HX_GAIN64_A);
+
+
+
+void setup() {
+
+Serial.begin(115200);
+Serial.setTimeout(10);
+
+  scaleX.tare(); 
+  scaleY.tare(); 
+
+Joystick.begin();
+Joystick.setXAxisRange(0, 1024); 
+Joystick.setYAxisRange(0, 1024);
+
+pinMode(resetPin, INPUT_PULLUP); 
+
+}
+
+
+
+
+
+
+void loop() 
+{
+
+if (Serial.available()>0)
+{
+flightSpeed = Serial.read();
+}  
+
+  if (scaleX.available()) {
+    JoyRawX = scaleX.read();
+  }
+  if (scaleY.available()) {
+    JoyRawY = scaleY.read();
+  }
+
+// map speed multiplier from min to max, to joystick's required force from min to max.
+
+
+joyMapXmin = map (flightSpeed, 0, 255, joyMinX/3, joyMinX*3);
+joyMapXmax = map (flightSpeed, 0, 255, joyMaxX/3, joyMaxX*3);
+
+joyMapYmin = map (flightSpeed, 0, 255, joyMinY/10, joyMinY*10);
+joyMapYmax = map (flightSpeed, 0, 255, joyMaxY/10, joyMaxY*10);
+
+
+
+JoystickX = map(JoyRawX,joyMapXmin, joyMidX,0,512); 
+JoystickX = map(JoyRawX,joyMidX, joyMapXmax,512,1024); 
+
+JoystickY = map(JoyRawY,joyMapYmin, joyMidY,0,512); 
+JoystickY = map(JoyRawY,joyMidY, joyMapYmax,512,1024); 
+
+
+Joystick.setXAxis(JoystickX);
+Joystick.setYAxis(JoystickY);
+
+
+
+///// CALIBRATION
+if (digitalRead(resetPin)== 0)
+{
+    joyCalibX = scaleX.read();
+    joyCalibY = scaleY.read();
+
+    
+if (joyCalibX > joyMaxX){
+  joyMaxX = joyCalibX;
+}
+if (joyCalibX < joyMinX){
+  joyMinX = joyCalibX;
+}
+if (joyCalibY > joyMaxY){
+  joyMaxY = joyCalibY;
+}
+if (joyCalibY < joyMinY){
+  joyMinY = joyCalibY;
+  }
+
+joyMidX = joyCalibX;
+joyMidY = joyCalibY;
+
+//  Serial.println(joyMaxX);
+  // Serial.println(joyMidX);
+  //  Serial.println(joyMinX);
+ 
+     // Serial.println(joyMaxY);
+      //  Serial.println(joyMinY);
+
+
+    
+  }
+
+
+}
